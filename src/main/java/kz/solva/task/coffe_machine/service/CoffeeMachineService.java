@@ -1,7 +1,9 @@
 package kz.solva.task.coffe_machine.service;
 
 import kz.solva.task.coffe_machine.DTO.RecipeIngredient;
+import kz.solva.task.coffe_machine.domain.Ingredient;
 import kz.solva.task.coffe_machine.domain.Recipe;
+import kz.solva.task.coffe_machine.repository.Ingredient_repository;
 import kz.solva.task.coffe_machine.repository.Machine_repository;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,6 +14,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
@@ -20,18 +23,20 @@ public class CoffeeMachineService {
     private final Machine_repository repository;
     private final HolidayService holidayService;
     private final IngredientService ingredientService;
+    private final Ingredient_repository ingredientRepository;
 
     public boolean isMachineAvailable() {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
-        if (today.getDayOfWeek() == DayOfWeek.SATURDAY || today.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            return false;
-        }
-        if (now.isBefore(LocalTime.of(8, 0)) || now.isAfter(LocalTime.of(17, 0))) {
-            return false;
-        }
-        String countryCode = "KZ";
-        return !holidayService.isHoliday(today, countryCode);
+//        if (today.getDayOfWeek() == DayOfWeek.SATURDAY || today.getDayOfWeek() == DayOfWeek.SUNDAY) {
+//            return false;
+//        }
+//        if (now.isBefore(LocalTime.of(8, 0)) || now.isAfter(LocalTime.of(17, 0))) {
+//            return false;
+//        }
+//        String countryCode = "KZ";
+//        return !holidayService.isHoliday(today, countryCode);
+        return true;
     }
 
     public ResponseEntity<String> getAllDrinks() {
@@ -39,7 +44,11 @@ public class CoffeeMachineService {
             return new ResponseEntity("Coffee machine is not availabe", HttpStatus.SERVICE_UNAVAILABLE);
         }
         List<Recipe> availableDrinks = repository.findAll();
-        return new ResponseEntity("All available drinks" + availableDrinks, HttpStatus.OK);
+        String allAvailableDrinks = availableDrinks.stream()
+                .map(Recipe::getName)
+                .map(name -> "\"" + name + "\"")
+                .collect(Collectors.joining(", "));
+        return new ResponseEntity("All available drinks" + allAvailableDrinks, HttpStatus.OK);
     }
 
     public ResponseEntity<String> makeCoffee(String name) {
@@ -55,11 +64,18 @@ public class CoffeeMachineService {
     }
 
     public ResponseEntity<String> addNewRecipe(Recipe newRecipe) {
-        if(repository.findByName(newRecipe.getName()) != null){
-            return new ResponseEntity<>("Recipe with this name already exists.", HttpStatus.BAD_REQUEST);
-        }
         if (isRecipeExists(newRecipe.getIngredients())) {
             return new ResponseEntity<>("Recipe with the same ingredients and quantities already exists.", HttpStatus.BAD_REQUEST);
+        }
+        for (RecipeIngredient recipeIngredient : newRecipe.getIngredients()) {
+            Ingredient existingIngredient = ingredientRepository.findByName(recipeIngredient.getIngredient().getName());
+
+            if (existingIngredient == null) {
+                return new ResponseEntity<>("Ingredient " + recipeIngredient.getIngredient().getName() + " does not exist.", HttpStatus.BAD_REQUEST);
+            }
+
+            recipeIngredient.setIngredient(existingIngredient);
+            recipeIngredient.setRecipe(newRecipe);  // Устанавливаем связь с рецептом
         }
         repository.save(newRecipe);
         return new ResponseEntity("Recipe added", HttpStatus.OK);

@@ -15,7 +15,7 @@ public class Statistics {
     private Long id;
 
     @OneToOne
-    private Drink drink;
+    private Recipe drink;
 
     @Column(nullable = false)
     private int orderCount;

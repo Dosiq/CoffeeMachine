@@ -17,7 +17,7 @@ public class HolidayService {
 
     @Cacheable("holidays")
     public boolean isHoliday(LocalDate date, String country){
-        String url = API + "v3/PublicHolidays/" + date.getYear() + "/" + country;
+        String url = API + "/v3/PublicHolidays/" + date.getYear() + "/" + country;
 
         Holiday[] holidays = restTemplate.getForObject(url, Holiday[].class);
 
