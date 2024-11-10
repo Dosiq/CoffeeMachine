@@ -13,9 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,15 +29,14 @@ public class CoffeeMachineService {
     public boolean isMachineAvailable() {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
-//        if (today.getDayOfWeek() == DayOfWeek.SATURDAY || today.getDayOfWeek() == DayOfWeek.SUNDAY) {
-//            return false;
-//        }
-//        if (now.isBefore(LocalTime.of(8, 0)) || now.isAfter(LocalTime.of(17, 0))) {
-//            return false;
-//        }
-//        String countryCode = "KZ";
-//        return !holidayService.isHoliday(today, countryCode);
-        return true;
+        if (today.getDayOfWeek() == DayOfWeek.SATURDAY || today.getDayOfWeek() == DayOfWeek.SUNDAY) {
+            return false;
+        }
+        if (now.isBefore(LocalTime.of(8, 0)) || now.isAfter(LocalTime.of(17, 0))) {
+            return false;
+        }
+        String countryCode = "KZ";
+        return !holidayService.isHoliday(today, countryCode);
     }
 
     public ResponseEntity<String> getAllDrinks() {
