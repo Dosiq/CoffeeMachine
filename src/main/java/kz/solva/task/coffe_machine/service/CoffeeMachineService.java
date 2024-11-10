@@ -13,7 +13,9 @@ import org.springframework.stereotype.Service;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +26,7 @@ public class CoffeeMachineService {
     private final HolidayService holidayService;
     private final IngredientService ingredientService;
     private final Ingredient_repository ingredientRepository;
+    private final StatisticsService statisticsService;
 
     public boolean isMachineAvailable() {
         LocalDate today = LocalDate.now();
@@ -55,17 +58,24 @@ public class CoffeeMachineService {
         if(!isMachineAvailable()){
             return new ResponseEntity("Coffee machine is not availabe", HttpStatus.SERVICE_UNAVAILABLE);
         }
+        if (repository.findByName(name) == null){
+            return new ResponseEntity("There is no such thing.", HttpStatus.SERVICE_UNAVAILABLE);
+        }
         Recipe drink = repository.findByName(name);
         if(!ingredientService.canMakeDrink(drink)){
             return new ResponseEntity<>("Not enough ingredients to make " + drink.getName(), HttpStatus.BAD_REQUEST);
         }
         ingredientService.updateIngredientQuantities(drink);
+        statisticsService.updateStatistics(drink);
         return new ResponseEntity("Your " + drink.getName() + " is ready!", HttpStatus.OK);
     }
 
     public ResponseEntity<String> addNewRecipe(Recipe newRecipe) {
         if (isRecipeExists(newRecipe.getIngredients())) {
             return new ResponseEntity<>("Recipe with the same ingredients and quantities already exists.", HttpStatus.BAD_REQUEST);
+        }
+        if(repository.findByName(newRecipe.getName()) != null){
+            return new ResponseEntity<>("Recipe with the same name already exists.", HttpStatus.BAD_REQUEST);
         }
         for (RecipeIngredient recipeIngredient : newRecipe.getIngredients()) {
             Ingredient existingIngredient = ingredientRepository.findByName(recipeIngredient.getIngredient().getName());
@@ -75,7 +85,7 @@ public class CoffeeMachineService {
             }
 
             recipeIngredient.setIngredient(existingIngredient);
-            recipeIngredient.setRecipe(newRecipe);  // Устанавливаем связь с рецептом
+            recipeIngredient.setRecipe(newRecipe);
         }
         repository.save(newRecipe);
         return new ResponseEntity("Recipe added", HttpStatus.OK);
@@ -92,15 +102,17 @@ public class CoffeeMachineService {
         return false;
     }
 
-    private boolean areIngredientsEqual(List<RecipeIngredient> existingIngredients, List<RecipeIngredient> newIngredients) {
-        if (existingIngredients.size() != newIngredients.size()) {
+    private boolean areIngredientsEqual(List<RecipeIngredient> ingredients, List<RecipeIngredient> newRecipeIngredients) {
+        if (ingredients.size() != newRecipeIngredients.size()) {
             return false;
         }
-        for (RecipeIngredient newIngredient : newIngredients) {
-            boolean matchFound = existingIngredients.stream()
+        for (RecipeIngredient newIngredient : newRecipeIngredients) {
+            boolean matchFound = ingredients.stream()
                     .anyMatch(existingIngredient ->
-                            existingIngredient.getIngredient().getId().equals(newIngredient.getIngredient().getId()) &&
-                                    existingIngredient.getQuantity().equals(newIngredient.getQuantity()));
+                            existingIngredient.getIngredient().getName().equals(newIngredient.getIngredient().getName()) &&
+                                    existingIngredient.getQuantity().equals(newIngredient.getQuantity())
+                    );
+
             if (!matchFound) {
                 return false;
             }
